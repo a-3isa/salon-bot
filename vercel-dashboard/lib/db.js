@@ -5,8 +5,14 @@ let _pool = null;
 
 export function getPool() {
   if (_pool) return _pool;
-  const cs = process.env.DATABASE_URL;
-  if (!cs) throw new Error('DATABASE_URL غير مضبوط على الخادم');
+  // DATABASE_URL is ours; the POSTGRES_* names are what the Supabase↔Vercel
+  // integration injects, so either way of wiring the project works.
+  const cs =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
+  if (!cs) throw new Error('DATABASE_URL / POSTGRES_URL غير مضبوط على الخادم');
   // Supabase (and most managed Postgres) require TLS. For serverless we don't
   // pin the CA, so allow the managed cert. Use the *pooler* connection string
   // (port 6543, ?pgbouncer=true) on Vercel for best results.
