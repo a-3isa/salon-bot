@@ -793,10 +793,12 @@ const sendBookingDetail = node({
 });
 
 // ─── REMINDER BRANCH (independent cron) ─────────────────────────
-// Every 10 min: read the sheet, pick bookings whose slot starts in ~1h (today,
-// Cairo), send a WhatsApp reminder (free-form, best-effort — only reaches
-// customers inside the 24h window). Dedup via staticData.reminded[ref]=date
-// (safe under concurrency=1). No sheet column needed. Slot label -> start hour:
+// Every 10 min: read today's live bookings, pick the ones whose slot starts in
+// ~1h (Cairo), send a WhatsApp reminder (free-form, best-effort — only reaches
+// customers inside the 24h window). Dedup is the `reservations.reminded_at`
+// column: the read filters out rows already stamped with today's Cairo date and
+// Mark Reminded stamps them after sending, so the dedupe survives static-data
+// loss and is inspectable in SQL. Slot label -> start hour:
 //   S1=13 S2=15 S3=17 S4=19 S5=21 S6=23 (reminder fires at start-60..-45 min).
 const reminderCron = trigger({
   type: 'n8n-nodes-base.scheduleTrigger', version: 1.2,
@@ -808,24 +810,26 @@ const readResReminder = node({
   credentials: { postgres: newCredential(PG_CREDENTIAL) },
   config: { name: 'Read Res (Reminder)', alwaysOutputData: true, parameters: {
     operation: 'executeQuery',
-    // Only today's live bookings can be due; Pick Due Reminders still does the
-    // hour/dedupe logic, so its jsCode is unchanged.
-    query: RES_SELECT + "\n where status not in ('cancelled','done')\n   and booking_date = (now() at time zone 'Africa/Cairo')::date",
+    // Only today's live, not-yet-reminded bookings can be due; Pick Due Reminders
+    // does the hour arithmetic.
+    query: RES_SELECT +
+      "\n where coalesce(status,'') not in ('cancelled','done')" +
+      "\n   and booking_date = (now() at time zone 'Africa/Cairo')::date" +
+      "\n   and coalesce(reminded_at,'') <> to_char((now() at time zone 'Africa/Cairo')::date,'YYYY-MM-DD')",
     options: {} } },
   output: [{ booking_ref: 'BK-000001', booking_date: '2026-07-23', slot: 'من 1 إلى 3 مساءً', barber_name: 'عمر', phone: 201011076509, status: '' }]
 });
 const pickDueReminders = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: { name: 'Pick Due Reminders', parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: `
-var staticData = $getWorkflowStaticData('global');
-var rem = staticData.reminded || {};
 var NL = String.fromCharCode(10);
 var cairoDate = new Intl.DateTimeFormat('en-CA', { timeZone:'Africa/Cairo' }).format(new Date());
 var hh = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone:'Africa/Cairo', hour:'2-digit', hour12:false }).format(new Date()), 10);
 var mm = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone:'Africa/Cairo', minute:'2-digit' }).format(new Date()), 10);
 var nowMin = hh*60 + mm;
 var SLOT_START = { 'من 1 إلى 3 مساءً':13, 'من 3 إلى 5 مساءً':15, 'من 5 إلى 7 مساءً':17, 'من 7 إلى 9 مساءً':19, 'من 9 إلى 11 مساءً':21, 'من 11 مساءً إلى 1 صباحاً':23 };
-// Sheets stores phone as a NUMBER (leading + lost, leading 0 stripped). Rebuild 20XXXXXXXXXX or skip.
+// Legacy sheet rows stored phone as a NUMBER (leading + lost, leading 0 stripped),
+// and the column is plain text in Postgres. Rebuild 20XXXXXXXXXX or skip.
 function normPhone(v){ var s=String(v==null?'':v).replace(/[^0-9]/g,''); if(!s) return ''; if(s.charAt(0)==='0') s='2'+s; else if(s.length===10 && s.charAt(0)==='1') s='20'+s; if(s.length!==12 || s.slice(0,2)!=='20') return ''; return s; }
 var rows = $input.all().map(function(i){ return i.json; });
 var out = [];
@@ -834,17 +838,17 @@ rows.forEach(function(r){
   if(String(r.booking_date).slice(0,10) !== cairoDate) return;
   var st = String(r.status==null?'':r.status).trim().toLowerCase();
   if(st==='cancelled' || st==='done') return;
+  // Dedupe lives in reservations.reminded_at now (Mark Reminded writes it, and
+  // Read Res (Reminder) already filters today's marked rows out) — this is the
+  // belt-and-braces check, not the mechanism.
+  if(String(r.reminded_at||'').slice(0,10) === cairoDate) return;
   var sh = SLOT_START[String(r.slot).trim()]; if(sh===undefined) return;
   var untilMin = sh*60 - nowMin;
   if(untilMin < 45 || untilMin > 60) return;
-  if(rem[ref]) return;
   var phone = normPhone(r.phone); if(!phone) return;
   var text = 'تذكير ⏰'+NL+'حجزك النهاردة الساعة '+String(r.slot)+' مع '+String(r.barber_name||'')+'.'+NL+'رقم الحجز: '+ref+NL+'لو مش هتقدر تيجي، رد بكلمة إلغاء.';
-  rem[ref] = cairoDate;
   out.push({ json: { to:phone, text:text, ref:ref } });
 });
-Object.keys(rem).forEach(function(k){ if(rem[k] < cairoDate) delete rem[k]; });
-staticData.reminded = rem;
 return out;
 ` } },
   output: [{ to: '201011076509', text: 'تذكير', ref: 'BK-000001' }]
@@ -856,6 +860,27 @@ const sendReminder = node({
     resource: 'message', operation: 'send', phoneNumberId: PHONE_NUMBER_ID,
     recipientPhoneNumber: expr('{{ $json.to }}'), messageType: 'text', textBody: expr('{{ $json.text }}') } },
   output: [{ messages: [{ id: 'wamid.abc' }] }]
+});
+// Stamp the batch as reminded. Runs once (executeOnce) and pulls the refs straight
+// off Pick Due Reminders, so it does not depend on paired-item lineage surviving
+// the WhatsApp node. Send Reminder continues on error, so a booking is marked even
+// when the free-form window has closed — same as the old staticData behaviour, and
+// it stops a dead number being retried every 10 minutes all day.
+const markReminded = node({
+  type: 'n8n-nodes-base.postgres', version: 2.7,
+  credentials: { postgres: newCredential(PG_CREDENTIAL) },
+  config: { name: 'Mark Reminded', executeOnce: true, parameters: {
+    operation: 'executeQuery',
+    query: [
+      'update reservations',
+      "   set reminded_at = to_char((now() at time zone 'Africa/Cairo')::date,'YYYY-MM-DD')",
+      ' where booking_ref = any($1::text[])',
+      'returning booking_ref, reminded_at'
+    ].join('\n'),
+    options: {
+      queryReplacement: expr("{{ [ $('Pick Due Reminders').all().map(i => i.json.ref) ] }}")
+    } } },
+  output: [{ booking_ref: 'BK-000001', reminded_at: '2026-08-16' }]
 });
 
 // ─── UPDATE BOOKING (change time / cancel) ──────────────────────
@@ -911,4 +936,5 @@ export default workflow('salon-whatsapp-bot', 'Salon WhatsApp Booking Bot')
   .add(reminderCron)
   .to(readResReminder)
   .to(pickDueReminders)
-  .to(sendReminder);
+  .to(sendReminder)
+  .to(markReminded);
