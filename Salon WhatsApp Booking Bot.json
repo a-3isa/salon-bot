@@ -1,0 +1,883 @@
+{
+  "name": "Salon WhatsApp Booking Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": []
+        }
+      },
+      "id": "40de614f-ff00-4ba7-80f1-b3c75a2a45ce",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        224
+      ],
+      "webhookId": "329c41e8-9e9b-4e7b-b8d3-7fd8ac04a8a9",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "AbkWrg1e2u2eCt2O",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "from",
+              "value": "={{ $json.messages?.[0]?.from ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "body",
+              "value": "={{ ($json.messages?.[0]?.text?.body ?? $json.messages?.[0]?.interactive?.button_reply?.id ?? $json.messages?.[0]?.interactive?.list_reply?.id ?? $json.messages?.[0]?.interactive?.nfm_reply?.response_json ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "msgType",
+              "value": "={{ (['text','interactive'].indexOf($json.messages?.[0]?.type) !== -1) ? 'text' : ($json.messages?.[0]?.type ?? 'status') }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "recent",
+              "value": "={{ (!$json.messages?.[0]?.timestamp || (Date.now()/1000 - Number($json.messages?.[0]?.timestamp)) <= 600) ? 'ok' : 'stale' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5db72eb0-fc0d-483f-ae91-3e3c5a5bd060",
+      "name": "Normalize Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-msgtype",
+              "leftValue": "={{ $json.msgType }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "text"
+            },
+            {
+              "id": "c-recent",
+              "leftValue": "={{ $json.recent }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "ok"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f0bea5da-6d3d-4162-84fc-f747eb1a0c29",
+      "name": "Text Messages Only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        256,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1liMVjPZ9cRbqEVmBnAIn4syOCv6a3QU3v5cHvc0E0n0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Services"
+        },
+        "options": {}
+      },
+      "id": "ab308b4c-bfd0-4809-bc0a-4842aa621655",
+      "name": "Fetch Services",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1056,
+        416
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "plB4FVxraemXQcRt",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "services",
+        "options": {}
+      },
+      "id": "23cf614d-4f78-4825-8952-e2e20a9993b2",
+      "name": "Aggregate Services",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1liMVjPZ9cRbqEVmBnAIn4syOCv6a3QU3v5cHvc0E0n0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Barbers"
+        },
+        "options": {}
+      },
+      "id": "72f30cac-e1a7-4597-9187-65736f250051",
+      "name": "Fetch Barbers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1424,
+        416
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "plB4FVxraemXQcRt",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "barbers",
+        "options": {}
+      },
+      "id": "28c17f88-6df8-44ef-9f3d-6ef7df94012b",
+      "name": "Aggregate Barbers",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "var staticData = $getWorkflowStaticData('global');\nvar now = Date.now();\nvar CACHE_TTL = 10 * 60 * 1000;\n\nvar allServices = null;\nif (staticData.servicesCache && staticData.servicesCacheTime && (now - staticData.servicesCacheTime) <= CACHE_TTL && staticData.servicesCache.length > 0) {\n  allServices = staticData.servicesCache;\n}\nif (allServices === null) {\n  try {\n    allServices = ($('Aggregate Services').first().json.services || []).filter(function(s){ return String(s.is_available).toUpperCase()==='TRUE'; });\n    staticData.servicesCache = allServices; staticData.servicesCacheTime = now;\n  } catch(e) { allServices = staticData.servicesCache || []; }\n}\n\nvar allBarbers = null;\nif (staticData.barbersCache && staticData.barbersCacheTime && (now - staticData.barbersCacheTime) <= CACHE_TTL && staticData.barbersCache.length > 0) {\n  allBarbers = staticData.barbersCache;\n}\nif (allBarbers === null) {\n  try {\n    allBarbers = ($('Aggregate Barbers').first().json.barbers || []).filter(function(b){ return String(b.is_available).toUpperCase()==='TRUE'; });\n    staticData.barbersCache = allBarbers; staticData.barbersCacheTime = now;\n  } catch(e) { allBarbers = staticData.barbersCache || []; }\n}\n\nvar msg = $('Normalize Message').first().json;\nvar sessionRaw = $('Load Session').first().json;\n\nvar from = msg.from;\nvar rawBody = (msg.body || '').trim();\nvar NL = String.fromCharCode(10);\nvar waNum = from.charAt(0)==='+'?from:('+'+from);\n\nvar normDigits = function(s){ return s.replace(/[٠-٩]/g, function(c){ return String(c.charCodeAt(0)-0x0660); }); };\nvar normAr = function(s){ return s.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[ً-ٟ]/g,''); };\nvar norm = function(s){ return normAr(normDigits(s)).toLowerCase().trim(); };\n\nvar body = normDigits(rawBody).trim();\nvar bodyN = norm(rawBody);\n\nvar lang = 'ar';\nvar step = sessionRaw.step || 'WELCOME';\nvar serviceName = sessionRaw.service_name || '';\nvar selectedIds = sessionRaw.service_ids ? String(sessionRaw.service_ids).split(',').filter(Boolean) : [];\nvar barberName = sessionRaw.barber_name || '';\nvar timePreference = sessionRaw.time_preference || '';\nvar customerName = sessionRaw.customer_name || '';\nvar customerPhone = sessionRaw.customer_phone || '';\nvar editing = sessionRaw.editing || '';\n\nvar SALON = 'اهلا بك في صالون محمد وعمر للحلاقة';\nvar SALON_PHONE = '01280800867 - 01285588096';\n\nfunction clip(s,n){ s=String(s); return s.length>n ? s.substring(0,n) : s; }\nfunction btn(id,title){ return { type:'reply', reply:{ id:String(id), title:clip(title,20) } }; }\nfunction row(id,title,desc){ var r={ id:String(id), title:clip(title,24) }; if(desc){ r.description=clip(desc,72); } return r; }\nfunction iButtons(text,buttons){ return { type:'button', body:{ text:clip(text,1024) }, action:{ buttons:buttons } }; }\nfunction iList(text,buttonLabel,rows){ return { type:'list', body:{ text:clip(text,1024) }, action:{ button:clip(buttonLabel,20), sections:[{ rows:rows }] } }; }\n\nfunction sidOf(sv,i){ return String(sv.service_id || ('IDX'+(i+1))); }\nfunction svcById(id){ for(var i=0;i<allServices.length;i++){ if(sidOf(allServices[i],i)===id) return allServices[i]; } return null; }\nfunction svcNameById(id){ var s=svcById(id); return s?(s.name_ar||s.name):null; }\nfunction selNames(){ return selectedIds.map(svcNameById).filter(Boolean); }\n\nfunction showServicesText(p){\n  p=p||'';\n  return p + SALON + NL + 'اختر خدماتك واكتب الأرقام مفصولة بمسافة:' + NL +\n    allServices.map(function(sv,i){ return (i+1)+'. '+(sv.name_ar||sv.name); }).join(NL);\n}\n\nfunction summaryText(){\n  return 'راجع حجزك:' + NL + NL +\n    'الخدمة: ' + serviceName + NL +\n    'الحلاق: ' + barberName + NL +\n    'الوقت: ' + timePreference + NL +\n    'الاسم: ' + customerName + NL +\n    'الهاتف: ' + customerPhone;\n}\n\nvar months_ar = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nvar days_ar = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];\nvar cairoToday = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Africa/Cairo',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  hourCycle: 'h23'\n}).format(new Date()).replace(',', '');\nvar cairoTodayInfo = new Intl.DateTimeFormat('en-CA', { timeZone:'Africa/Cairo' }).format(new Date());\nfunction cairoDate(off){ var d=new Date(cairoTodayInfo+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+off); return d; }\nfunction dayStore(off){ var d=cairoDate(off); return off===0?'اليوم':(off===1?'غداً':(days_ar[d.getUTCDay()]+' '+d.getUTCDate()+' '+months_ar[d.getUTCMonth()])); }\nfunction showDay(p){\n  p=p||'';\n  var text=p+'اختر اليوم:';\n  var rows=[];\n  for(var off=0; off<=7; off++){\n    var d=cairoDate(off);\n    var wd=days_ar[d.getUTCDay()]; var ds=d.getUTCDate()+' '+months_ar[d.getUTCMonth()];\n    var title = off===0?'اليوم':(off===1?'غداً':(wd+' '+ds));\n    var desc = off<=1 ? (wd+' '+ds) : '';\n    rows.push(row('D'+off, title, desc));\n  }\n  return { t:text, i:iList(text, 'اختر اليوم', rows) };\n}\nvar periodMap = { '1':'من 1 إلى 7 مساءً', '2':'من 7 إلى 1 صباحاً' };\nfunction showPeriod(p){ p=p||''; var text=p+'اختر الفترة:'+NL+timePreference; return { t:text, i:iButtons(text, [ btn('1','من 1 إلى 7 مساءً'), btn('2','من 7 إلى 1 صباحاً') ]) }; }\n\nfunction showBarber(p){\n  p=p||'';\n  var text=p+'اخترت: '+serviceName+NL+NL+'اختر الحلاق:';\n  if(allBarbers.length<=2){\n    var btns = allBarbers.map(function(b,i){ return btn(i+1, b.name_ar||b.name); });\n    btns.push(btn('EDIT','تعديل الخدمات'));\n    return { t:text, i:iButtons(text, btns) };\n  }\n  var rows = allBarbers.map(function(b,i){ return row(i+1, b.name_ar||b.name); });\n  rows.push(row('EDIT','تعديل الخدمات','تغيير الخدمات المختارة'));\n  return { t:text, i:iList(text, 'اختر', rows) };\n}\nfunction showConfirm(p){ p=p||''; var text=p+summaryText(); return { t:text, i:iButtons(text, [ btn('1','تأكيد ✅'), btn('2','إلغاء'), btn('3','تعديل') ]) }; }\nfunction showEditMenu(p){ p=p||''; var text=p+'ماذا تريد ان تعدل؟'; var rows=[ row('E_SVC','الخدمات'), row('E_NAME','الاسم'), row('E_PHONE','الهاتف'), row('E_TIME','الموعد') ]; return { t:text, i:iList(text, 'تعديل', rows) }; }\n\nvar valName=function(n){ n=n.trim(); if(n.length<3) return null; if(!/^[؀-ۿa-zA-Z ]+$/.test(n)) return null; return n; };\nvar valPhone=function(p){ p=normDigits(p).replace(/[^\\d+]/g,''); if(!/^\\+?\\d{7,15}$/.test(p)) return null; return p; };\n\nvar restartKw=['hi','hello','hey','start','welcome','greetings','yo','sup','howdy','hola','elo','alo','ello','مرحبا','اهلا','هاي','هالو','هلو','سلام','السلام','الو','الوو','ابدا','بدايه','من جديد'];\nvar backKw=['back','رجوع','رجع','عوده','العوده','خلف','للخلف'];\nvar isBack=function(){ return body==='0' || backKw.indexOf(bodyN)!==-1; };\n\nfunction resetBooking(){ serviceName=''; selectedIds=[]; barberName=''; timePreference=''; customerName=''; customerPhone=''; editing=''; }\n\nvar response='', interactive=null, action='reply', bookingRef='', bookingData=null, adminMsg='';\nfunction setMenu(m){ response=m.t; interactive=m.i; }\n\nif (restartKw.indexOf(bodyN)!==-1) {\n  step='SERVICE'; resetBooking();\n  if(allServices.length===0){ response='لا توجد خدمات متاحة حالياً.'; }\n  else { response=showServicesText(); }\n\n} else if (step==='WELCOME' || step==='LANG' || step==='') {\n  step='SERVICE'; resetBooking();\n  if(allServices.length===0){ response='لا توجد خدمات متاحة حالياً.'; }\n  else { response=showServicesText(); }\n\n} else if (step==='SERVICE') {\n  var nums = normDigits(rawBody).split(/[\\s,،]+/).map(function(x){ return parseInt(x.trim()); }).filter(function(n){ return !isNaN(n)&&n>=1&&n<=allServices.length; });\n  if(nums.length===0){ response=showServicesText(); }\n  else {\n    var seen={}; var picked=[];\n    nums.forEach(function(n){ if(!seen[n]){ seen[n]=1; picked.push(n); } });\n    selectedIds = picked.map(function(n){ return sidOf(allServices[n-1],n-1); });\n    serviceName = selNames().join('، ');\n    if(allBarbers.length===0){ response='لا يوجد حلاقون متاحون حالياً.'; }\n    else { step='BARBER'; setMenu(showBarber()); }\n  }\n\n} else if (step==='BARBER') {\n  if (isBack() || bodyN==='edit' || body==='EDIT') { step='SERVICE'; selectedIds=[]; serviceName=''; barberName=''; response=showServicesText(); }\n  else {\n    var bn=parseInt(body);\n    if(isNaN(bn)||bn<1||bn>allBarbers.length){ setMenu(showBarber('⚠️ اختيار غير صحيح.'+NL+NL)); }\n    else { var br=allBarbers[bn-1]; barberName=br.name_ar||br.name; step='DAY'; setMenu(showDay()); }\n  }\n\n} else if (step==='DAY') {\n  if (isBack()) { step='BARBER'; timePreference=''; setMenu(showBarber()); }\n  else if (body.charAt(0)==='D' && /^\\d+$/.test(body.substring(1)) && parseInt(body.substring(1))>=0 && parseInt(body.substring(1))<=7) {\n    timePreference = dayStore(parseInt(body.substring(1))); step='PERIOD'; setMenu(showPeriod());\n  } else { setMenu(showDay('اختيار غير صحيح.'+NL+NL)); }\n\n} else if (step==='PERIOD') {\n  if (isBack()) { step='DAY'; timePreference=''; setMenu(showDay()); }\n  else if (periodMap[body]) {\n    timePreference = timePreference + ' - ' + periodMap[body];\n    if(editing==='time'){ editing=''; step='CONFIRM'; setMenu(showConfirm()); }\n    else { step='NAME'; response='ادخل اسمك الكامل:'; }\n  }\n  else { setMenu(showPeriod('اختيار غير صحيح.'+NL+NL)); }\n\n} else if (step==='NAME') {\n  if (isBack()) { step='PERIOD'; timePreference=timePreference.split(' - ')[0]; setMenu(showPeriod()); }\n  else {\n    var vn=valName(rawBody);\n    if(!vn){ response='اسم غير صحيح. ادخل اسمك الحقيقي (3 احرف على الاقل).'; }\n    else { customerName=vn; if(!customerPhone){ customerPhone=waNum; } step='CONFIRM'; setMenu(showConfirm()); }\n  }\n\n} else if (step==='PHONE') {\n  if (isBack()) { step='CONFIRM'; setMenu(showConfirm()); }\n  else {\n    var vp=valPhone(rawBody);\n    if(!vp){ response='رقم هاتف غير صحيح. مثال: 201012345678'; }\n    else { customerPhone=vp; step='CONFIRM'; setMenu(showConfirm()); }\n  }\n\n} else if (step==='CONFIRM') {\n  if (body==='1') {\n    action='save_booking';\n    bookingRef='BK-'+String(Date.now()%1000000).padStart(6,'0');\n    response='✅ تم تاكيد حجزك!'+NL+'رقم الحجز: '+bookingRef+NL+NL+'الخدمة: '+serviceName+NL+'الحلاق: '+barberName+NL+'الوقت: '+timePreference+NL+'الاسم: '+customerName+NL+'الهاتف: '+customerPhone+NL+NL+'للاستفسار: '+SALON_PHONE;\n    adminMsg='New Reservation'+NL+'Ref: '+bookingRef+NL+'Service: '+serviceName+NL+'Barber: '+barberName+NL+'Time: '+timePreference+NL+'Name: '+customerName+NL+'Phone: '+customerPhone+NL+'WA: '+from;\n    bookingData={ booking_ref:bookingRef, service_name:serviceName, barber_name:barberName, time_preference:timePreference, customer_name:customerName, phone:customerPhone, created_at:cairoToday };\n    step='SERVICE'; resetBooking();\n  } else if (body==='2') {\n    step='SERVICE'; resetBooking(); response=showServicesText('تم الغاء الحجز.'+NL+NL);\n  } else if (body==='3') {\n    step='EDIT_MENU'; setMenu(showEditMenu());\n  } else { setMenu(showConfirm('اختيار غير صحيح.'+NL+NL)); }\n\n} else if (step==='EDIT_MENU') {\n  if (isBack()) { step='CONFIRM'; setMenu(showConfirm()); }\n  else if (body==='E_SVC') { step='SERVICE'; selectedIds=[]; serviceName=''; barberName=''; timePreference=''; response=showServicesText(); }\n  else if (body==='E_NAME') { step='NAME'; response='ادخل اسمك الكامل:'; }\n  else if (body==='E_PHONE') { step='PHONE'; response='ادخل رقم هاتفك:'; }\n  else if (body==='E_TIME') { editing='time'; timePreference=''; step='DAY'; setMenu(showDay()); }\n  else { setMenu(showEditMenu('⚠️ اختيار غير صحيح.'+NL+NL)); }\n\n} else {\n  step='SERVICE'; resetBooking(); response=showServicesText();\n}\n\nvar sessions = staticData.sessions || {};\nsessions[from] = { phone:from, step:step, lang:lang, service_name:serviceName, service_ids:selectedIds.join(','), barber_name:barberName, time_preference:timePreference, customer_name:customerName, customer_phone:customerPhone, editing:editing };\nstaticData.sessions = sessions;\n\nvar waPayload;\nif (interactive) { waPayload = { messaging_product:'whatsapp', recipient_type:'individual', to:from, type:'interactive', interactive:interactive }; }\nelse { waPayload = { messaging_product:'whatsapp', recipient_type:'individual', to:from, type:'text', text:{ preview_url:false, body:response } }; }\n\nreturn [{ json: { action:action, response:response, waPayload:waPayload, adminMsg:adminMsg, from:from, lang:lang, step:step, service_name:serviceName, barber_name:barberName, time_preference:timePreference, customer_name:customerName, customer_phone:customerPhone, bookingRef:bookingRef, bookingData:bookingData } }];"
+      },
+      "id": "5448d858-de9d-45f9-9c4e-f66c3eb80d43",
+      "name": "Process Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "save_booking",
+                    "id": "c02dce25-e2ce-499d-904c-0185a9d1a65d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Save Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "check_booking",
+                    "id": "d68bcfc6-2bf7-4ac9-8002-43f483f74228"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Check Booking"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Reply"
+        }
+      },
+      "id": "0a4d8516-d6cf-4857-ac7a-6e067f443810",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1liMVjPZ9cRbqEVmBnAIn4syOCv6a3QU3v5cHvc0E0n0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Reservations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "booking_ref": "={{ $('Process Message').first().json.bookingData.booking_ref }}",
+            "service_name": "={{ $('Process Message').first().json.bookingData.service_name }}",
+            "barber_name": "={{ $('Process Message').first().json.bookingData.barber_name }}",
+            "time_preference": "={{ $('Process Message').first().json.bookingData.time_preference }}",
+            "customer_name": "={{ $('Process Message').first().json.bookingData.customer_name }}",
+            "phone": "={{ $('Process Message').first().json.bookingData.phone }}",
+            "created_at": "={{ $('Process Message').first().json.bookingData.created_at }}"
+          },
+          "schema": [
+            {
+              "id": "booking_ref",
+              "displayName": "booking_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service_name",
+              "displayName": "service_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "barber_name",
+              "displayName": "barber_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "time_preference",
+              "displayName": "time_preference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5a20e02b-ea62-4114-910c-0477bb217d0b",
+      "name": "Append Reservation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2464,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "plB4FVxraemXQcRt",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1136333829565655",
+        "recipientPhoneNumber": "={{ $('Process Message').first().json.from }}",
+        "textBody": "={{ $('Process Message').first().json.response }}",
+        "additionalFields": {}
+      },
+      "id": "dda5d473-663b-43a5-9ffb-eaf4d488d8b2",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2912,
+        0
+      ],
+      "webhookId": "a986a6f4-2dda-4e61-8c7d-6c0fca8ddffe",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "HOAPRtBq8R2ilhtD",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1liMVjPZ9cRbqEVmBnAIn4syOCv6a3QU3v5cHvc0E0n0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Reservations"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "booking_ref",
+              "lookupValue": "={{ $('Process Message').first().json.bookingRef }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69ed239b-945d-4002-afce-e88958dfc294",
+      "name": "Lookup Booking",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2240,
+        192
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "plB4FVxraemXQcRt",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "var NL = String.fromCharCode(10);\nvar lang = $('Process Message').first().json.lang || 'ar';\nvar from = $('Process Message').first().json.from;\nvar bookingRef = $('Process Message').first().json.bookingRef;\nvar row = $json;\nvar response;\nif (row.booking_ref) {\n  if (lang === 'ar') {\n    response = 'تفاصيل حجزك:' + NL + NL + 'الخدمة: ' + row.service_name + NL + 'الحلاق: ' + row.barber_name + NL + 'الوقت: ' + row.time_preference + NL + 'الاسم: ' + row.customer_name + NL + 'الهاتف: ' + row.phone + NL + 'رقم الحجز: ' + row.booking_ref + NL + 'للاستفسار: 01280800867 - 01285588096';\n  } else {\n    response = 'Your Reservation:' + NL + NL + 'Service: ' + row.service_name + NL + 'Barber: ' + row.barber_name + NL + 'Time: ' + row.time_preference + NL + 'Name: ' + row.customer_name + NL + 'Phone: ' + row.phone + NL + 'Ref: ' + row.booking_ref + NL + 'Inquiries: 01280800867 - 01285588096';\n  }\n} else {\n  response = lang === 'ar' ? 'لا يوجد حجز برقم ' + bookingRef : 'No reservation found for ' + bookingRef;\n}\nreturn [{ json: { response: response, from: from } }];"
+      },
+      "id": "6a41fd26-02b6-4cc9-8d99-38e3ae61d388",
+      "name": "Format Booking Detail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sessions"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{ $('Process Message').first().json.from }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{ $('Process Message').first().json.from }}",
+            "step": "={{ $('Process Message').first().json.step }}",
+            "lang": "={{ $('Process Message').first().json.lang }}",
+            "service_name": "={{ $('Process Message').first().json.service_name }}",
+            "barber_name": "={{ $('Process Message').first().json.barber_name }}",
+            "time_preference": "={{ $('Process Message').first().json.time_preference }}",
+            "customer_name": "={{ $('Process Message').first().json.customer_name }}",
+            "customer_phone": "={{ $('Process Message').first().json.customer_phone }}"
+          },
+          "schema": [
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "lang",
+              "displayName": "lang",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "service_name",
+              "displayName": "service_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "barber_name",
+              "displayName": "barber_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "time_preference",
+              "displayName": "time_preference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "customer_phone",
+              "displayName": "customer_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1758d8dc-ad9d-44bd-a0b3-ec9685ea9e02",
+      "name": "Save Session (Check)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2688,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1136333829565655",
+        "recipientPhoneNumber": "={{ $('Format Booking Detail').first().json.from }}",
+        "textBody": "={{ $('Format Booking Detail').first().json.response }}",
+        "additionalFields": {}
+      },
+      "id": "2598d50c-acd1-49c8-8eed-bc26cbe26697",
+      "name": "Send Booking Detail",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2912,
+        192
+      ],
+      "webhookId": "f01cbb89-f2e5-43d3-9cfa-b88d2ece1ef6",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "HOAPRtBq8R2ilhtD",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "var staticData = $getWorkflowStaticData('global');\nvar from = $('Normalize Message').first().json.from;\nvar sessions = staticData.sessions || {};\nvar sess = sessions[from] || {};\nvar now = Date.now();\nvar TTL = 10*60*1000;\nvar sFresh = staticData.servicesCache && staticData.servicesCacheTime && (now - staticData.servicesCacheTime) <= TTL && staticData.servicesCache.length > 0;\nvar bFresh = staticData.barbersCache && staticData.barbersCacheTime && (now - staticData.barbersCacheTime) <= TTL && staticData.barbersCache.length > 0;\nreturn [{ json: {\n  phone: from,\n  step: sess.step || '',\n  lang: sess.lang || '',\n  service_name: sess.service_name || '',\n  service_ids: sess.service_ids || '',\n  barber_name: sess.barber_name || '',\n  time_preference: sess.time_preference || '',\n  customer_name: sess.customer_name || '',\n  customer_phone: sess.customer_phone || '',\n  editing: sess.editing || '',\n  cacheFresh: (sFresh && bFresh) ? 'yes' : 'no'\n} }];"
+      },
+      "id": "60e230eb-3e42-4125-a06e-ae525cae2bcd",
+      "name": "Load Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        208
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('WhatsApp Trigger').first().json.metadata.phone_number_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Process Message').first().json.waPayload) }}",
+        "options": {}
+      },
+      "id": "d1c3da23-bd03-4633-bcd1-859bad7cf7db",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2464,
+        384
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "HOAPRtBq8R2ilhtD",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cf-1",
+              "leftValue": "={{ $json.cacheFresh }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "yes"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "77e5b833-71c4-40bf-9567-911803add383",
+      "name": "Cache Fresh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        208
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Message": {
+      "main": [
+        [
+          {
+            "node": "Text Messages Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Services": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Services": {
+      "main": [
+        [
+          {
+            "node": "Fetch Barbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Barbers": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Barbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Barbers": {
+      "main": [
+        [
+          {
+            "node": "Process Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Message": {
+      "main": [
+        [
+          {
+            "node": "Route by Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action": {
+      "main": [
+        [
+          {
+            "node": "Append Reservation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lookup Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Booking": {
+      "main": [
+        [
+          {
+            "node": "Format Booking Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Booking Detail": {
+      "main": [
+        [
+          {
+            "node": "Save Session (Check)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Session (Check)": {
+      "main": [
+        [
+          {
+            "node": "Send Booking Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Messages Only": {
+      "main": [
+        [
+          {
+            "node": "Load Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Reservation": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Session": {
+      "main": [
+        [
+          {
+            "node": "Cache Fresh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Fresh?": {
+      "main": [
+        [
+          {
+            "node": "Process Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "1a8778c7-cc06-428b-939d-b1c69af919b2",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5b4367a78a70a620cf75c1b271448582c0ab9270df10fdb2fea6d522ffe62058"
+  },
+  "nodeGroups": [],
+  "id": "JcfFSDJAyrkJulQQ",
+  "tags": []
+}

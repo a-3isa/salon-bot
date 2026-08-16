@@ -1,0 +1,36 @@
+# ── secrets ────────────────────────────────────────────────────────────────
+.env
+.env.local
+service_account.json
+*credentials*.json
+domain-certificate-*.pdf
+
+# ── customer data (names + phone numbers) ─────────────────────────────────
+backup/
+migration/003_reservations.sql
+sheet_dump.json
+
+# ── vendored third-party clone (has its own upstream repo) ────────────────
+evolution api/
+
+# ── installers / binaries ─────────────────────────────────────────────────
+*.msi
+*.exe
+
+# ── node ──────────────────────────────────────────────────────────────────
+node_modules/
+.next/
+.vercel/
+
+# ── python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── logs / scratch ────────────────────────────────────────────────────────
+*.log
+bot_err.txt
+bot_out.txt
+
+# ── tooling ───────────────────────────────────────────────────────────────
+.superpowers/
