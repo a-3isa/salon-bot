@@ -53,14 +53,25 @@ whenever you like.
 7. **Delta sync** — the live sheet was diffed against the backup snapshot that seeded
    Postgres, before and after publishing. Scripts: `scratchpad/delta.py`.
 
+8. **Dashboard live on Postgres** (2026-08-16 13:23 UTC) — `GET /api/board` returns 200.
+   The Vercel project is now git-linked to `a-3isa/salon-bot` with Root Directory
+   `vercel-dashboard`, so every push to `main` deploys production automatically.
+
+### Two traps worth remembering
+- **Root Directory.** Without it the git build runs at the repo root and dies with
+  "Couldn't find any `pages` or `app` directory".
+- **`sslmode` in the connection string.** The Supabase↔Vercel integration supplies
+  `POSTGRES_URL=…?sslmode=require`. node-postgres parses `sslmode` out of the URL and
+  lets it override the `ssl` option, and treats `require` as `verify-full` — so
+  `rejectUnauthorized:false` was silently ignored and every query failed with
+  "self-signed certificate in certificate chain". `lib/db.js` now strips the parameter
+  and sets the TLS policy explicitly.
+
 ## ⏳ Left to do
 
-### Vercel redeploy (still outstanding)
-Env vars alone do not reach a running deployment — Vercel binds them at build time.
-The newest deployment is still `dpl_53KW1b8CfwUM7Kb9wE1wKtcqStdg` from 07:44 UTC,
-i.e. from before the env vars were added. Open the project → Deployments → ⋯ →
-**Redeploy**, then log in at https://salon-dashboard-lemon.vercel.app and confirm
-today's board renders.
+Nothing blocking. Optional follow-ups:
+- Retire the sheet + Apps Script webview once a full day has passed on Postgres.
+- Move the reminder dedupe from n8n static data to `reservations.reminded_at`.
 
 ## Old checklist (done)
 
