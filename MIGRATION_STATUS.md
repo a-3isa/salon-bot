@@ -3,10 +3,15 @@
 _Last updated: 2026-08-16 (DB cutover session)_
 
 ## TL;DR
-The Postgres database is **live and loaded** (243 bookings, 2 barbers, 8 services).
-The bot is **still running on the Google Sheet** — zero downtime so far. Three
-steps remain, and all three are UI actions that need secrets, so they are yours:
-Vercel env vars, the n8n Postgres credential, then I flip the bot over.
+**The bot is on Postgres.** Workflow `ValuwlCKXRdDokCC` was published at
+2026-08-16 12:52 UTC with the five Google Sheets nodes replaced by Postgres
+nodes on the `Salon Postgres` credential (`HKc8Pa59yM0Qv6r3`). The database holds
+243 bookings, 2 barbers, 8 services, and was re-synced against the live sheet
+immediately before and after the flip (2 rows differed: one cancellation, one
+edited phone).
+
+The Google Sheet is now **read-only history** — nothing writes to it any more.
+Do not add or edit bookings there; use the dashboard.
 
 ---
 
@@ -42,7 +47,22 @@ whenever you like.
    as Postgres `executeQuery` nodes (see "How the bot changes" below). Not yet applied
    to the live workflow.
 
-## ⏳ Left to do — your three steps
+6. **Bot flipped to Postgres** (2026-08-16 12:52 UTC) — five nodes swapped, workflow
+   published, connections and canvas positions preserved. `alwaysOutputData` is on for
+   all five so an empty result still lets the branch continue.
+7. **Delta sync** — the live sheet was diffed against the backup snapshot that seeded
+   Postgres, before and after publishing. Scripts: `scratchpad/delta.py`.
+
+## ⏳ Left to do
+
+### Vercel redeploy (still outstanding)
+Env vars alone do not reach a running deployment — Vercel binds them at build time.
+The newest deployment is still `dpl_53KW1b8CfwUM7Kb9wE1wKtcqStdg` from 07:44 UTC,
+i.e. from before the env vars were added. Open the project → Deployments → ⋯ →
+**Redeploy**, then log in at https://salon-dashboard-lemon.vercel.app and confirm
+today's board renders.
+
+## Old checklist (done)
 
 ### 1. Get the connection string
 Supabase → project `mdwutpkrimtiwmfazpoi` → **Connect** → **Transaction pooler** (port 6543).
